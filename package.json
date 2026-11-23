@@ -1,0 +1,5 @@
+{
+  "name":"realtime-event-feed-platform","version":"1.0.0","private":true,"workspaces":["apps/*","packages/*"],
+  "scripts":{"predev":"npm run build --workspace @platform/shared","dev":"concurrently -k -n backend,frontend npm:dev:backend npm:dev:frontend","dev:backend":"npm --workspace @platform/backend run dev","dev:frontend":"npm --workspace @platform/frontend run dev -- --host 0.0.0.0","build":"npm run build --workspace @platform/shared && npm run build --workspace @platform/backend && npm run build --workspace @platform/frontend","test":"npm --workspace @platform/backend test","lint":"npm run lint --workspaces --if-present","format":"prettier --write ."},
+  "devDependencies":{"concurrently":"^9.1.2","prettier":"^3.4.2","typescript":"^5.7.2"}
+}

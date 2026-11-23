@@ -1,0 +1,1 @@
+/** @type {import('tailwindcss').Config} */ export default {content:['./src/**/*.{html,js,svelte,ts}'],theme:{extend:{colors:{ink:'#0b1020',panel:'#111a2e',line:'#25314b',muted:'#8995ad',accent:'#8b7cff'}}},plugins:[]};

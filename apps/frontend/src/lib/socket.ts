@@ -1,0 +1,1 @@
+import {io,type Socket} from 'socket.io-client';import {PUBLIC_SOCKET_URL} from '$env/static/public';export const socket:Socket=io(PUBLIC_SOCKET_URL||'http://localhost:4000',{autoConnect:false,transports:['websocket','polling'],ackTimeout:5000,retries:2});

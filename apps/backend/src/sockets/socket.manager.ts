@@ -1,0 +1,13 @@
+import type { Server,Socket } from 'socket.io';
+import type { PresenceManager } from '../presence/presence.manager.js';
+import type { EventService } from '../services/event.service.js';
+import { PublishEventSchema, RoomSchema } from '@platform/shared';
+import { logger } from '../utils/logger.js';
+import { RoomManager } from '../rooms/room.manager.js';
+export class SocketConnectionManager {private rooms=new RoomManager();private publishWindows=new Map<string,{started:number;count:number}>();constructor(private io:Server,private presence:PresenceManager,private events:EventService){}
+ register(){this.io.on('connection',(socket:Socket)=>{const userId=String(socket.handshake.auth.userId??'').trim();if(!userId||userId.length>100){socket.disconnect(true);return;}void this.onConnect(socket,userId);});}
+ private async onConnect(socket:Socket,userId:string){try{const count=await this.presence.connect(userId,socket.id);socket.data.userId=userId;socket.emit('connection:ready',{socketId:socket.id,userId});if(count===1)this.io.emit('presence:joined',{userId,connections:count});socket.on('event:publish',(raw:unknown,ack?:(v:unknown)=>void)=>{void this.publish(raw,ack);});socket.on('room:join',(raw:unknown,ack?:(v:unknown)=>void)=>{void this.room(socket,raw,true,ack);});socket.on('room:leave',(raw:unknown,ack?:(v:unknown)=>void)=>{void this.room(socket,raw,false,ack);});socket.on('disconnect',()=>{void this.onDisconnect(userId,socket.id);});}catch(error){logger.error('Socket initialization failed',{error:String(error)});socket.disconnect(true);}}
+ private async publish(raw:unknown,ack?: (v:unknown)=>void){try{const input=PublishEventSchema.parse(raw);const now=Date.now();const window=this.publishWindows.get(input.userId);if(!window||now-window.started>=10000)this.publishWindows.set(input.userId,{started:now,count:1});else if(window.count>=20){ack?.({ok:false,error:'Rate limit exceeded: maximum 20 events per 10 seconds'});return;}else window.count++;const event=await this.events.publish(input);ack?.({ok:true,data:event});}catch(e){ack?.({ok:false,error:e instanceof Error?e.message:'Unable to publish event'});}}
+ private async room(socket:Socket,raw:unknown,join:boolean,ack?: (v:unknown)=>void){try{const {roomId}=RoomSchema.parse(raw);if(join)await this.rooms.join(socket,roomId);else await this.rooms.leave(socket,roomId);ack?.({ok:true,data:{roomId,joined:join}});}catch(e){ack?.({ok:false,error:e instanceof Error?e.message:'Room operation failed'});}}
+ private async onDisconnect(userId:string,socketId:string){try{const count=await this.presence.disconnect(userId,socketId);if(count===0)this.io.emit('presence:left',{userId});}catch(e){logger.error('Presence cleanup failed',{error:String(e)});}}
+}

@@ -1,0 +1,3 @@
+import {createApp} from './app.js';import {env} from './config/env.js';import {logger} from './utils/logger.js';
+const runtime=await createApp();runtime.httpServer.listen(env.PORT,()=>logger.info('API server listening',{port:env.PORT}));
+let closing=false;async function shutdown(signal:string){if(closing)return;closing=true;logger.info('Graceful shutdown started',{signal});runtime.io.close();runtime.httpServer.close();await Promise.allSettled([runtime.pool.end(),runtime.redis.quit(),runtime.pub.quit(),runtime.sub.quit()]);process.exit(0);}process.on('SIGINT',()=>void shutdown('SIGINT'));process.on('SIGTERM',()=>void shutdown('SIGTERM'));
